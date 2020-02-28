@@ -4,9 +4,111 @@
     <title> Canvas Game</title>
   </head>
   <body>
-    <canvas id="game"> </canvas>
+    <canvas id="game" width="480" height="480" style="border: 2px solid black;"> </canvas>
     
-    <script> </script>
-  </body>
+    <script>
+      let canvas = document.getElementById("game");
+      let canvasContext = canvas.getContext("2d");
+      let background_image = new Image();
+      var seconds = 1;
+      // background_image.src = "";
+      canvas.style.backgroundColor = "aqua";
+      var objects_list = [];
+      
+      let player_position = {location: 0, y: canvas.height, change: 12};
+      player_position["location"] = player_position["change"];
 
+      function Object (Type, x, y) {
+        this.type = Type;
+        this.location_x = x;
+        this.location_y = y;
+        this.radius = 4;
+        this.color = (Type == "Danger" ? "red" : Type == "Benefit" ? "green" : "yellow");
+        this.index = objects_list.length-1;
+      }
+
+      document.addEventListener("keydown", (e) => {
+          // console.log(e);
+          // console.log("Initial: " + player_position["location"]);
+
+          switch (e.keyCode) {
+            case 37:
+              player_position["location"] -= player_position["change"];
+              break;
+            case 39:
+              player_position["location"] += player_position["change"];
+              break;
+          }
+
+          if (player_position["location"] >= canvas.width)
+            player_position["location"] = canvas.width - player_position["change"];
+          if (player_position["location"] <= 0)
+            player_position["location"] = 0 + player_position["change"];
+          // console.log("Changed: " + player_position["location"]);
+        });
+
+      function player_movements() {
+        canvasContext.beginPath();
+        canvasContext.arc(player_position["location"], player_position["y"] - player_position["change"], player_position["change"], 0, 2 * Math.PI);
+        canvasContext.fillStyle = "green";
+        canvasContext.fill();
+        canvasContext.closePath();
+      }
+
+      function create_object() {
+        // console.log("create_object() called");
+        const num = Math.random()*100;
+        console.log("random value:" + num);
+        if (num < 80) 
+          objects_list.push(new Object("Danger", Math.random()*canvas.width, 50));
+        else
+          objects_list.push(new Object("Benefit", Math.random() * canvas.width, 50));
+      }
+
+      function object_movements() {
+        // console.log("object_movements() called");
+        for (let index = 0; index < objects_list.length; index++) {
+          const element = objects_list[index];
+
+          element["location_y"] += 4;
+
+          if (element["location_y"] >= canvas.height) {
+            objects_list.splice(index, 1);
+            --index;
+          }
+        }
+      }
+
+      function draw_objects() {
+        for (let index = 0; index < objects_list.length; index++) {
+          const element = objects_list[index];
+          canvasContext.beginPath();
+          canvasContext.arc(element["location_x"], element["location_y"] - element["radius"], element["radius"], 0, 2 * Math.PI);
+          canvasContext.fillStyle = element["color"];
+          canvasContext.fill();
+          canvasContext.closePath();
+        }
+      }
+
+      function incrementTime() {
+          seconds += 1;
+          object_movements();
+          if (seconds % 2 === 0)
+            create_object();
+          // console.log("seconds: " + seconds);
+      }
+
+      var dropElement = setInterval(incrementTime, 1000);
+
+      const draw = () =>  {
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        player_movements();
+        draw_objects();
+        window.requestAnimationFrame(draw);
+      }
+
+      draw();
+
+    </script>
+  </body>
 </html>
