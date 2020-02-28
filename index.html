@@ -4,13 +4,16 @@
     <title> Canvas Game</title>
   </head>
   <body>
-    <canvas id="game" width="480" height="480" style="border: 2px solid black;"> </canvas>
+    <canvas id="game" width="360" height="490" style="border: 2px solid black;"> </canvas>
     
     <script>
       let canvas = document.getElementById("game");
       let canvasContext = canvas.getContext("2d");
       let background_image = new Image();
       var seconds = 1;
+      var lives = 3;
+      var points = 0;
+      var game_on = true;
       // background_image.src = "";
       canvas.style.backgroundColor = "aqua";
       var objects_list = [];
@@ -18,11 +21,13 @@
       let player_position = {location: 0, y: canvas.height, change: 12};
       player_position["location"] = player_position["change"];
 
+      const min_distance = player_position["change"] + 8;
+
       function Object (Type, x, y) {
         this.type = Type;
         this.location_x = x;
         this.location_y = y;
-        this.radius = 4;
+        this.radius = 8;
         this.color = (Type == "Danger" ? "red" : Type == "Benefit" ? "green" : "yellow");
         this.index = objects_list.length-1;
       }
@@ -58,11 +63,11 @@
       function create_object() {
         // console.log("create_object() called");
         const num = Math.random()*100;
-        console.log("random value:" + num);
+        // console.log("random value:" + num);
         if (num < 80) 
-          objects_list.push(new Object("Danger", Math.random()*canvas.width, 50));
+          objects_list.push(new Object("Danger", Math.random()*canvas.width, 55));
         else
-          objects_list.push(new Object("Benefit", Math.random() * canvas.width, 50));
+          objects_list.push(new Object("Benefit", Math.random()*canvas.width, 55));
       }
 
       function object_movements() {
@@ -70,9 +75,28 @@
         for (let index = 0; index < objects_list.length; index++) {
           const element = objects_list[index];
 
-          element["location_y"] += 4;
+          element["location_y"] += 18;
 
-          if (element["location_y"] >= canvas.height) {
+          var current_distance = Math.sqrt(Math.pow(player_position["location"] - element["location_x"], 2) + Math.pow(player_position["y"] - element["location_y"], 2));
+          if (current_distance <= min_distance) {
+            if (element["type"] === "Benefit") {
+              points++;
+              console.log("+points")
+            }
+            else if (element["type"] === "Danger") {
+              lives--;
+              if (lives == 0) {
+                game_on = false;
+              }
+              console.log("-lives");
+            }
+            objects_list.splice(index, 1);
+            index++;
+            console.log("lives: " + lives, ", points: " + points);
+          }
+
+          else if (element["location_y"] >= canvas.height) {
+            // console.log(current_distance - min_distance);
             objects_list.splice(index, 1);
             --index;
           }
@@ -91,20 +115,24 @@
       }
 
       function incrementTime() {
-          seconds += 1;
-          object_movements();
-          if (seconds % 2 === 0)
-            create_object();
-          // console.log("seconds: " + seconds);
+          if (game_on) {
+            seconds += 0.5;
+            object_movements();
+            if (seconds % 3 === 0)
+              create_object();
+            // console.log("seconds: " + seconds);
+         } 
       }
 
-      var dropElement = setInterval(incrementTime, 1000);
+      var dropElement = setInterval(incrementTime, 500);
 
       const draw = () =>  {
         canvasContext.clearRect(0, 0, canvas.width, canvas.height);
         player_movements();
         draw_objects();
-        window.requestAnimationFrame(draw);
+        if (game_on)  {
+          window.requestAnimationFrame(draw);
+        }
       }
 
       draw();
