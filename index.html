@@ -2,34 +2,52 @@
 <html>
   <head>
     <title> Canvas Game</title>
+    <style>
+      body  {
+        margin: auto;
+        padding: auto;
+        overflow: hidden;
+      }
+    </style>
   </head>
   <body>
-    <canvas id="game" width="360" height="490" style="border: 2px solid black;"> </canvas>
-    
+      <canvas id="game" width="360" height="490"> </canvas>
     <script>
-      let canvas = document.getElementById("game");
-      let canvasContext = canvas.getContext("2d");
-      let background_image = new Image();
-      var seconds = 1;
-      var lives = 3;
-      var points = 0;
-      var game_on = true;
-      // background_image.src = "";
-      canvas.style.backgroundColor = "aqua";
-      var objects_list = [];
+      document.querySelector("body").style.width = window.width;
+      document.querySelector("body").style.height = window.height;
+      document.querySelector("body").style.backgroundImage = "url('macbook.png')";
+      document.querySelector("body").style.backgroundSize = "cover";
+      document.querySelector("body").style.backgroundRepeat = "no-repeat";
       
-      let player_position = {location: 0, y: canvas.height, change: 12};
+
+      let canvas = document.getElementById("game");
+      canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth;
+      let canvasContext = canvas.getContext("2d");
+      let seconds = 1;
+      let lives = 3;
+      let points = 0;
+      let level = 1;
+      let game_on = false;
+      let danger_speed = 3;
+      let Benefit_speed = 6;
+      let object_radius = 20;
+      let objects_list = [];
+      let increase_threshold = false;
+      
+      let player_position = {location: 0, y: canvas.height-5, change: 30};
       player_position["location"] = player_position["change"];
 
-      const min_distance = player_position["change"] + 8;
+      const min_distance = player_position["change"] + object_radius;
 
       function Object (Type, x, y) {
         this.type = Type;
         this.location_x = x;
         this.location_y = y;
-        this.radius = 8;
+        this.radius = object_radius;
         this.color = (Type == "Danger" ? "red" : Type == "Benefit" ? "green" : "yellow");
         this.index = objects_list.length-1;
+        this.change = (Type == "Danger" ? danger_speed : Benefit_speed);
       }
 
       document.addEventListener("keydown", (e) => {
@@ -52,7 +70,7 @@
           // console.log("Changed: " + player_position["location"]);
         });
 
-      function player_movements() {
+      const player_movements = () => {
         canvasContext.beginPath();
         canvasContext.arc(player_position["location"], player_position["y"] - player_position["change"], player_position["change"], 0, 2 * Math.PI);
         canvasContext.fillStyle = "green";
@@ -60,50 +78,92 @@
         canvasContext.closePath();
       }
 
-      function create_object() {
+      const create_object = () => {
         // console.log("create_object() called");
         const num = Math.random()*100;
         // console.log("random value:" + num);
-        if (num < 80) 
-          objects_list.push(new Object("Danger", Math.random()*canvas.width, 55));
-        else
-          objects_list.push(new Object("Benefit", Math.random()*canvas.width, 55));
+        if (num < 20) {
+          let w = Math.random() * canvas.width;
+          if (w+ object_radius > canvas.width)  {
+            w = canvas.width - object_radius;
+            objects_list.push(new Object("Danger", w, 55));
+          }
+          // else if (w - object_radius < canvas.width) {
+          //   w = canvas.width + object_radius;
+          //   objects_list.push(new Object("Danger", w, 55));
+          // }
+          else {
+            objects_list.push(new Object("Danger", w, 55));
+          }
+        }
+        else{
+          let w = Math.random() * canvas.width;
+          if (w + object_radius > canvas.width) {
+            w = canvas.width - object_radius;
+            objects_list.push(new Object("Benefit", w, 55));
+          }
+          // else if (w - object_radius < canvas.width) {
+          //   w = canvas.width + object_radius;
+          //   objects_list.push(new Object("Benefit", w, 55));
+          // }
+          else {
+            objects_list.push(new Object("Benefit", w, 55));
+          }
+        }
       }
 
-      function object_movements() {
+      const object_movements = () => {
         // console.log("object_movements() called");
         for (let index = 0; index < objects_list.length; index++) {
           const element = objects_list[index];
 
-          element["location_y"] += 18;
+          element["location_y"] += element["change"];
 
-          var current_distance = Math.sqrt(Math.pow(player_position["location"] - element["location_x"], 2) + Math.pow(player_position["y"] - element["location_y"], 2));
+          let current_distance = Math.sqrt(Math.pow(player_position["location"] - element["location_x"], 2) + Math.pow(player_position["y"] - element["location_y"], 2));
           if (current_distance <= min_distance) {
             if (element["type"] === "Benefit") {
               points++;
-              console.log("+points")
+              // console.log("+points")
+              if ((points % 5)-2 == 0){
+                increase_threshold = true;
+                // console.log("threshold: " + increase_threshold);
+              }
+              if (points %5 == 0 && increase_threshold){
+                danger_speed += 1;
+                Benefit_speed += 1;
+                ++level;
+                increase_threshold = false;
+                // console.log("increased speed;")
+                // console.log("Benefit speed: " + Benefit_speed);
+                // console.log("dangeg speed" + danger_speed);
+              }
             }
             else if (element["type"] === "Danger") {
               lives--;
               if (lives == 0) {
                 game_on = false;
               }
-              console.log("-lives");
+              // console.log("-lives");
             }
             objects_list.splice(index, 1);
-            index++;
+            index--;
             console.log("lives: " + lives, ", points: " + points);
           }
 
-          else if (element["location_y"] >= canvas.height) {
-            // console.log(current_distance - min_distance);
+          if (element["location_y"] >= canvas.height) {
             objects_list.splice(index, 1);
+            if (element["type"] === "Benefit") {
+              --lives;
+              if (lives == 0) {
+                game_on = false;
+              }
+            }
             --index;
           }
         }
       }
 
-      function draw_objects() {
+      const draw_objects = () => {
         for (let index = 0; index < objects_list.length; index++) {
           const element = objects_list[index];
           canvasContext.beginPath();
@@ -114,28 +174,107 @@
         }
       }
 
-      function incrementTime() {
+      const incrementTime = () => {
           if (game_on) {
-            seconds += 0.5;
+            seconds += 0.1;
+            seconds = Math.round(seconds * 10)/10;
             object_movements();
-            if (seconds % 3 === 0)
+            if (seconds % 3 == 0)
               create_object();
             // console.log("seconds: " + seconds);
          } 
       }
 
-      var dropElement = setInterval(incrementTime, 500);
+      setInterval(incrementTime, 100);
+
+      const printProgress = () => {
+        canvasContext.beginPath();
+        canvasContext.fillStyle = "aqua";
+        canvasContext.font = "bold 30px Arial";
+        canvasContext.fillText("Lives Remaining: " + lives, 5, 25);
+        canvasContext.fillStyle = "blue";
+        canvasContext.fillText("Canvas Game, Level: " + level, (window.innerWidth/2)-150, 25);
+        canvasContext.fillStyle = "aqua";
+        canvasContext.fillText("Points Earned: " + points, (window.innerWidth) - 270, 25);
+        canvasContext.closePath();
+      }
+
+      const game_over = () => {
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        canvasContext.beginPath();
+        canvasContext.fillStyle = "aqua";
+        canvasContext.font = "bold 40px Arial";
+        canvasContext.fillText("POINTS EARNED: " + points, 110, (window.innerHeight)-80);
+        canvasContext.fillText("LEVEL: " + level, window.innerWidth-320, (window.innerHeight) - 80);
+        canvasContext.font = "bold 80px Arial"
+        canvasContext.fillStyle = "red";
+        canvasContext.fillText("!! GAME OVER !!", (window.innerWidth/2) - 300, (window.innerHeight/2)-80);
+        canvasContext.closePath();
+      }
 
       const draw = () =>  {
         canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        printProgress();
         player_movements();
         draw_objects();
         if (game_on)  {
           window.requestAnimationFrame(draw);
         }
+        else
+          game_over();
       }
 
-      draw();
+      let start_time = 14;
+
+      const startGame = () => {
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        canvasContext.beginPath();
+        canvasContext.fillStyle = "red";
+        canvasContext.font = "bold 30px Arial";
+        canvasContext.fillText("To play the game, use the right and left arrow keys.", (window.innerWidth/2)- 400, (window.innerHeight/2)-210);
+        canvasContext.fillText("Avoid collision with the elements with red color", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 180);
+        canvasContext.fillText("as they have images of elements which doesn't match", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 150);
+        canvasContext.fillText("the player image and will result in reduce in lives.", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 120);
+        canvasContext.fillText(" Collide with the green elements to increase points", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 90);
+        canvasContext.fillText("as they contain the elements which are relevant with ", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 60);
+        canvasContext.fillText("player image. Also dont let green elements touch the ground", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 30);
+        canvasContext.fillText("as it will result in lives reduction.", (window.innerWidth / 2) - 400, (window.innerHeight / 2));
+
+        canvasContext.fillStyle = "red";
+        canvasContext.font = "bold 50px Arial";
+        canvasContext.fillText("Game will start in " + start_time + " seconds. ENJOY!!!", (window.innerWidth / 2) - 500, (window.innerHeight / 2) + 200);
+
+        setInterval(() => {
+          if (start_time > -1)  {
+            --start_time;
+            canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+            canvasContext.beginPath();
+            canvasContext.fillStyle = "red";
+            canvasContext.font = "bold 30px Arial";
+            canvasContext.fillText("To play the game, use the right and left arrow keys.", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 210);
+            canvasContext.fillText("Avoid collision with the elements with red color", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 180);
+            canvasContext.fillText("as they have images of elements which doesn't match", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 150);
+            canvasContext.fillText("the player image and will result in reduce in lives.", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 120);
+            canvasContext.fillText(" Collide with the green elements to increase points", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 90);
+            canvasContext.fillText("as they contain the elements which are relevant with ", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 60);
+            canvasContext.fillText("player image. Also dont let green elements touch the ground", (window.innerWidth / 2) - 400, (window.innerHeight / 2) - 30);
+            canvasContext.fillText("as it will result in lives reduction.", (window.innerWidth / 2) - 400, (window.innerHeight / 2));
+
+            canvasContext.fillStyle = "red";
+            canvasContext.font = "bold 50px Arial";
+            canvasContext.fillText("Game will start in " + start_time + " seconds. ENJOY!!!", (window.innerWidth / 2) - 500, (window.innerHeight / 2) + 200);
+
+          }
+        }, 1000);
+        canvasContext.closePath();
+
+        setTimeout(() => {
+          game_on = true;
+          draw();
+        }, start_time*1000);
+      }
+
+      startGame();
 
     </script>
   </body>
